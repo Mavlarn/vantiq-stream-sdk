@@ -12,7 +12,7 @@
   "author": "Mavlarn <mavlarn@liepiaowang.com>",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/Mavlarn/vantiq-stream-sdk"
   },
   "license": "MIT",
   "engines": {
