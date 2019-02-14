@@ -76,7 +76,7 @@ export class VantiqAPI {
 
     return this.session.get(path)
       .then((result: AxiosResponse) => {
-        return result.data.count;
+        return result.data.length;
       });
   };
 

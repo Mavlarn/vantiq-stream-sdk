@@ -14,19 +14,19 @@ describe("Dummy test", () => {
       accessToken: "NMrIV21OMjouawMjicUUd__EJFbhVWOiXHy8AdL2ojo=",
       apiVersion: 1
     });
-    api.select("Sensor", null, null, null).then(response => {
-      console.log(response);
-      expect(response.status).toBe(200);
+    api.select("Sensor", null, null, null).then(data => {
+      console.log(data);
+      expect(data.length).toBe(99);
     });
 
-    api.selectOne("Sensor", "5c4adaefbb88a35b4d76c9aa").then(response => {
-      console.log(response);
-      expect(parseInt(response.data.id)).toBe(1);
+    api.selectOne("Sensor", "5c4adaefbb88a35b4d76c9aa").then(data => {
+      console.log(data);
+      expect(parseInt(data.id)).toBe(1);
     });
 
-    api.count("Sensor", null).then((response: any) => {
-      console.log(response);
-      expect(response.data.length).toBe(99);
+    api.count("Sensor", null).then((data: any) => {
+      console.log(data);
+      expect(data).toBe(99);
     });
 
     api.subscribe("types", "Sensor", "update", (response: any) => {
