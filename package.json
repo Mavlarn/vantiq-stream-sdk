@@ -1,6 +1,6 @@
 {
   "name": "vantiq-stream",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Vantiq stream sdk",
   "keywords": [],
   "main": "dist/vantiq-stream.umd.js",
