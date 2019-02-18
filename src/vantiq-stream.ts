@@ -3,7 +3,10 @@ import { VantiqAPI } from './vantiq-api';
 import { VantiqSubscriber } from './vantiq-sock';
 import { AxiosResponse } from 'axios';
 
-import { Subscription, Observable, Observer, Subject, interval } from 'rxjs';
+import { Subscription, Observable, Observer, Subject, interval, from } from 'rxjs';
+
+import { map, mergeAll } from "rxjs/operators";
+
 
 // import fromPromise from 'rxjs';
 /**
@@ -41,10 +44,8 @@ export class VantiqStream {
   * @param where selection condition to get data.
   * @param limit result data limit count.
   * @param sort sort properties to sort during selection and result.
-  * @param onData callback function which will be called when the data is arrived.
   */
-  public timedQuery(streamName: string, typeName: string, intervalSec: number, where: any, limit: number, sort: any, onData: Function): Observable<any> {
-    const subject = new Subject();
+  public timedQuery(streamName: string, typeName: string, intervalSec: number, where: any, limit: number, sort: any): Observable<any> {
     const params: any = {};
     if (where) {
       params.where = where;
@@ -55,18 +56,28 @@ export class VantiqStream {
     if (sort) {
       params.sort = sort;
     }
-    interval(intervalSec * 1000).subscribe((_: any) => {
-      this.api.selectBySock(typeName, params, (data: any) => {
-        subject.next(data);
-        try {
-          onData(data);
-        } catch (e) {
-          subject.error(e);
-        }
+
+    const ho$ = interval(1000)
+
+    const source$ = interval(intervalSec * 1000).pipe(map( (_: any) => {
+
+      const result = new Promise((resolve, reject) => {
+        this.api.selectBySock(typeName, params, (data: any) => {
+          resolve(data);
+        });
       });
-    })
-    this.streams.set(streamName, subject);
-    return subject;
+      return from(result);
+
+    }),
+    mergeAll())
+    this.streams.set(streamName, source$);
+
+    // interval(intervalSec * 1000).subscribe((_: any) => {
+    //   this.api.selectBySock(typeName, params, (data: any) => {
+    //     subject.next(data);
+    //   });
+    // });
+    return source$;
   }
 
   /**
@@ -78,23 +89,15 @@ export class VantiqStream {
    * @param where selection condition to get data.
    * @param limit result data limit count.
    * @param sort sort properties to sort during selection and result.
-   * @param onData callback function which will be called when the data is arrived.
    */
-  public timedQueryWithRest(streamName: string, typeName: string, intervalSec: number, limit: number, where: any, sort: any, onData: Function): Observable<any> {
-    const subject = new Subject();
-    interval(intervalSec * 1000).subscribe((_: any) => {
-      // resource: string, props: any, where: any, sort: any
-      this.api.select(typeName, null, where, sort).then((data: any) => {
-        subject.next(data);
-        try {
-          onData(data);
-        } catch (e) {
-          subject.error(e);
-        }
-      });
-    });
-    this.streams.set(streamName, subject);
-    return subject;
+  public timedQueryWithRest(streamName: string, typeName: string, intervalSec: number, limit: number, where: any, sort: any): Observable<any> {
+    const source$ = interval(intervalSec * 1000).pipe(map((_: any) => {
+      // api.select() return a promise
+      return from(this.api.select(typeName, null, where, sort));
+    }),
+    mergeAll());
+    this.streams.set(streamName, source$);
+    return source$;
   }
 
   /**
@@ -105,18 +108,12 @@ export class VantiqStream {
    * @param isInsert whether to get inserted data.
    * @param isUpdate whether to get updated data.
    * @param isDelete whether to get deleted data.
-   * @param onData callback function which will be called when the data is arrived.
    */
-  public dataChanged(streamName: string, typeName: string, isInsert: boolean, isUpdate: boolean, isDelete: boolean, onData: Function) {
+  public dataChanged(streamName: string, typeName: string, isInsert: boolean, isUpdate: boolean, isDelete: boolean) {
     const subject = new Subject();
 
     const _subscriberOnDate = (data: any) => {
       subject.next(data);
-      try{
-        onData(data);
-      } catch(e) {
-        subject.error(e);
-      }
     };
 
     if (!isInsert && !isUpdate && !isDelete) {
@@ -141,17 +138,11 @@ export class VantiqStream {
    *
    * @param streamName stream name.
    * @param sourceName name of the source.
-   * @param onData callback function which will be called when the data is arrived.
    */
-  public sourceEvent(streamName: string, sourceName: string, onData: Function): Observable<any> {
+  public sourceEvent(streamName: string, sourceName: string): Observable<any> {
     const subject = new Subject();
     const _subscriberOnData = (data: any) => {
       subject.next(data);
-      try{
-        onData(data);
-      } catch(e) {
-        subject.error(e);
-      }
     };
 
     this.api.subscribe("sources", sourceName, null, _subscriberOnData);
@@ -164,21 +155,16 @@ export class VantiqStream {
    *
    * @param streamName stream name.
    * @param topicName name of the topic.
-   * @param onData callback function which will be called when the data is arrived.
    */
-  public topicEvent(streamName: string, topicName:string, onData: Function) {
+  public topicEvent(streamName: string, topicName:string) {
     const subject = new Subject();
     const _subscriberOnData = (data: any) => {
       subject.next(data);
-      try{
-        onData(data);
-      } catch(e) {
-        subject.error(e);
-      }
     };
 
     this.api.subscribe("topics", topicName, null, _subscriberOnData);
     this.streams.set(streamName, subject);
+
     return subject;
   }
 
@@ -186,18 +172,20 @@ export class VantiqStream {
    * Create a client event stream. It can be used in client side to trigger a data in this stream.
    *
    * @param streamName stream name.
-   * @param onData callback function which will be called when the data is arrived.
+   *
    */
-  public clientEvent(streamName: string, onData: Function): Observable<any> {
+  public clientEvent(streamName: string): Observable<any> {
     const subject = new Subject();
-    subject.subscribe( (data: any) => {
-      try{
-        onData(data);
-      } catch(e) {
-        subject.error(e);
-      }
-    })
     this.streams.set(streamName, subject);
     return subject;
+  }
+
+  public unsubscribeAll() {
+    this.streams.forEach(stream => {
+
+    })
+    for (const subs$ in this.streams) {
+
+    }
   }
 }

@@ -102,7 +102,7 @@ var VantiqSubscriber = /** @class */ (function () {
                         resolve(true);
                     }
                     else {
-                        throw new Error("Error establishing authenticated WebSocket session:\n" + JSON.stringify(resp, null, 2));
+                        reject("Error establishing authenticated WebSocket session:\n" + JSON.stringify(resp, null, 2));
                     }
                 }
             };

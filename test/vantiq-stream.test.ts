@@ -17,6 +17,9 @@ describe("VantiqStream test", () => {
     });
 
     // stream.
-    expect(stream).toBeInstanceOf(VantiqStream);
+    const subs$ = stream.timedQuery("tq_sensorStream", "Sensor", 1, { id: {'$lt': 5 }}, 2, null).subscribe((data: any) => {
+      console.log("data:", data);
+      expect(data.length).toBe(2);
+    });
   })
 })

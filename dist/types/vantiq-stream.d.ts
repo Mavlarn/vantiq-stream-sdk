@@ -28,9 +28,8 @@ export declare class VantiqStream {
      * @param where selection condition to get data.
      * @param limit result data limit count.
      * @param sort sort properties to sort during selection and result.
-     * @param onData callback function which will be called when the data is arrived.
      */
-    timedQuery(streamName: string, typeName: string, intervalSec: number, where: any, limit: number, sort: any, onData: Function): Observable<any>;
+    timedQuery(streamName: string, typeName: string, intervalSec: number, where: any, limit: number, sort: any): Observable<any>;
     /**
      * Create a timed query stream, using Rest API.
      *
@@ -40,9 +39,8 @@ export declare class VantiqStream {
      * @param where selection condition to get data.
      * @param limit result data limit count.
      * @param sort sort properties to sort during selection and result.
-     * @param onData callback function which will be called when the data is arrived.
      */
-    timedQueryWithRest(streamName: string, typeName: string, intervalSec: number, limit: number, where: any, sort: any, onData: Function): Observable<any>;
+    timedQueryWithRest(streamName: string, typeName: string, intervalSec: number, limit: number, where: any, sort: any): Observable<any>;
     /**
      * Create a data changed stream. It will be used get changed data from a `Type`.
      *
@@ -51,31 +49,29 @@ export declare class VantiqStream {
      * @param isInsert whether to get inserted data.
      * @param isUpdate whether to get updated data.
      * @param isDelete whether to get deleted data.
-     * @param onData callback function which will be called when the data is arrived.
      */
-    dataChanged(streamName: string, typeName: string, isInsert: boolean, isUpdate: boolean, isDelete: boolean, onData: Function): Subject<{}>;
+    dataChanged(streamName: string, typeName: string, isInsert: boolean, isUpdate: boolean, isDelete: boolean): Subject<{}>;
     /**
      * Create a source event data stream. It will be used to receive s data stream from a Source.
      * If only the source has a `interval` setting, it will generate a data stream.
      *
      * @param streamName stream name.
      * @param sourceName name of the source.
-     * @param onData callback function which will be called when the data is arrived.
      */
-    sourceEvent(streamName: string, sourceName: string, onData: Function): Observable<any>;
+    sourceEvent(streamName: string, sourceName: string): Observable<any>;
     /**
      * Create a topic event stream. It will be used to get data from a topic.
      *
      * @param streamName stream name.
      * @param topicName name of the topic.
-     * @param onData callback function which will be called when the data is arrived.
      */
-    topicEvent(streamName: string, topicName: string, onData: Function): Subject<{}>;
+    topicEvent(streamName: string, topicName: string): Subject<{}>;
     /**
      * Create a client event stream. It can be used in client side to trigger a data in this stream.
      *
      * @param streamName stream name.
-     * @param onData callback function which will be called when the data is arrived.
+     *
      */
-    clientEvent(streamName: string, onData: Function): Observable<any>;
+    clientEvent(streamName: string): Observable<any>;
+    unsubscribeAll(): void;
 }

@@ -45,10 +45,14 @@ You can use `VantiqStream` to create a stream.
 ```javascript
 // create a timed query stream.
 const whereParam = { id: { "$lt": 5 }};
-const sensorStream = streamApi.timedQuery("tq_sensorStream", "Sensor", 10, whereParam, null, null, (data) => {
+const sensorStream = streamApi.timedQuery("tq_sensorStream", "Sensor", 10, whereParam, null, null).subscribe((data) => {
   // process data
 });
 
+```
+If you need to stop getting data, you can `unsubscribe()`:
+```javascript
+sensorStream.unsubscribe();
 ```
 
 Now we can create stream for:

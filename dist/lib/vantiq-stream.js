@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var vantiq_api_1 = require("./vantiq-api");
 var rxjs_1 = require("rxjs");
+var operators_1 = require("rxjs/operators");
 // import fromPromise from 'rxjs';
 /**
  * Vantiq stream util class to create a stream like we do in vantiq client builder.
@@ -32,11 +33,9 @@ var VantiqStream = /** @class */ (function () {
      * @param where selection condition to get data.
      * @param limit result data limit count.
      * @param sort sort properties to sort during selection and result.
-     * @param onData callback function which will be called when the data is arrived.
      */
-    VantiqStream.prototype.timedQuery = function (streamName, typeName, intervalSec, where, limit, sort, onData) {
+    VantiqStream.prototype.timedQuery = function (streamName, typeName, intervalSec, where, limit, sort) {
         var _this = this;
-        var subject = new rxjs_1.Subject();
         var params = {};
         if (where) {
             params.where = where;
@@ -47,19 +46,22 @@ var VantiqStream = /** @class */ (function () {
         if (sort) {
             params.sort = sort;
         }
-        rxjs_1.interval(intervalSec * 1000).subscribe(function (_) {
-            _this.api.selectBySock(typeName, params, function (data) {
-                subject.next(data);
-                try {
-                    onData(data);
-                }
-                catch (e) {
-                    subject.error(e);
-                }
+        var ho$ = rxjs_1.interval(1000);
+        var source$ = rxjs_1.interval(intervalSec * 1000).pipe(operators_1.map(function (_) {
+            var result = new Promise(function (resolve, reject) {
+                _this.api.selectBySock(typeName, params, function (data) {
+                    resolve(data);
+                });
             });
-        });
-        this.streams.set(streamName, subject);
-        return subject;
+            return rxjs_1.from(result);
+        }), operators_1.mergeAll());
+        this.streams.set(streamName, source$);
+        // interval(intervalSec * 1000).subscribe((_: any) => {
+        //   this.api.selectBySock(typeName, params, (data: any) => {
+        //     subject.next(data);
+        //   });
+        // });
+        return source$;
     };
     /**
      * Create a timed query stream, using Rest API.
@@ -70,25 +72,15 @@ var VantiqStream = /** @class */ (function () {
      * @param where selection condition to get data.
      * @param limit result data limit count.
      * @param sort sort properties to sort during selection and result.
-     * @param onData callback function which will be called when the data is arrived.
      */
-    VantiqStream.prototype.timedQueryWithRest = function (streamName, typeName, intervalSec, limit, where, sort, onData) {
+    VantiqStream.prototype.timedQueryWithRest = function (streamName, typeName, intervalSec, limit, where, sort) {
         var _this = this;
-        var subject = new rxjs_1.Subject();
-        rxjs_1.interval(intervalSec * 1000).subscribe(function (_) {
-            // resource: string, props: any, where: any, sort: any
-            _this.api.select(typeName, null, where, sort).then(function (data) {
-                subject.next(data);
-                try {
-                    onData(data);
-                }
-                catch (e) {
-                    subject.error(e);
-                }
-            });
-        });
-        this.streams.set(streamName, subject);
-        return subject;
+        var source$ = rxjs_1.interval(intervalSec * 1000).pipe(operators_1.map(function (_) {
+            // api.select() return a promise
+            return rxjs_1.from(_this.api.select(typeName, null, where, sort));
+        }), operators_1.mergeAll());
+        this.streams.set(streamName, source$);
+        return source$;
     };
     /**
      * Create a data changed stream. It will be used get changed data from a `Type`.
@@ -98,18 +90,11 @@ var VantiqStream = /** @class */ (function () {
      * @param isInsert whether to get inserted data.
      * @param isUpdate whether to get updated data.
      * @param isDelete whether to get deleted data.
-     * @param onData callback function which will be called when the data is arrived.
      */
-    VantiqStream.prototype.dataChanged = function (streamName, typeName, isInsert, isUpdate, isDelete, onData) {
+    VantiqStream.prototype.dataChanged = function (streamName, typeName, isInsert, isUpdate, isDelete) {
         var subject = new rxjs_1.Subject();
         var _subscriberOnDate = function (data) {
             subject.next(data);
-            try {
-                onData(data);
-            }
-            catch (e) {
-                subject.error(e);
-            }
         };
         if (!isInsert && !isUpdate && !isDelete) {
             throw new Error("Error creating stream:" + streamName);
@@ -132,18 +117,11 @@ var VantiqStream = /** @class */ (function () {
      *
      * @param streamName stream name.
      * @param sourceName name of the source.
-     * @param onData callback function which will be called when the data is arrived.
      */
-    VantiqStream.prototype.sourceEvent = function (streamName, sourceName, onData) {
+    VantiqStream.prototype.sourceEvent = function (streamName, sourceName) {
         var subject = new rxjs_1.Subject();
         var _subscriberOnData = function (data) {
             subject.next(data);
-            try {
-                onData(data);
-            }
-            catch (e) {
-                subject.error(e);
-            }
         };
         this.api.subscribe("sources", sourceName, null, _subscriberOnData);
         this.streams.set(streamName, subject);
@@ -154,18 +132,11 @@ var VantiqStream = /** @class */ (function () {
      *
      * @param streamName stream name.
      * @param topicName name of the topic.
-     * @param onData callback function which will be called when the data is arrived.
      */
-    VantiqStream.prototype.topicEvent = function (streamName, topicName, onData) {
+    VantiqStream.prototype.topicEvent = function (streamName, topicName) {
         var subject = new rxjs_1.Subject();
         var _subscriberOnData = function (data) {
             subject.next(data);
-            try {
-                onData(data);
-            }
-            catch (e) {
-                subject.error(e);
-            }
         };
         this.api.subscribe("topics", topicName, null, _subscriberOnData);
         this.streams.set(streamName, subject);
@@ -175,20 +146,18 @@ var VantiqStream = /** @class */ (function () {
      * Create a client event stream. It can be used in client side to trigger a data in this stream.
      *
      * @param streamName stream name.
-     * @param onData callback function which will be called when the data is arrived.
+     *
      */
-    VantiqStream.prototype.clientEvent = function (streamName, onData) {
+    VantiqStream.prototype.clientEvent = function (streamName) {
         var subject = new rxjs_1.Subject();
-        subject.subscribe(function (data) {
-            try {
-                onData(data);
-            }
-            catch (e) {
-                subject.error(e);
-            }
-        });
         this.streams.set(streamName, subject);
         return subject;
+    };
+    VantiqStream.prototype.unsubscribeAll = function () {
+        this.streams.forEach(function (stream) {
+        });
+        for (var subs$ in this.streams) {
+        }
     };
     return VantiqStream;
 }());
